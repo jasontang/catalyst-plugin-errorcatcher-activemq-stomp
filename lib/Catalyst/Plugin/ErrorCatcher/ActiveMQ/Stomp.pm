@@ -1,7 +1,12 @@
 package Catalyst::Plugin::ErrorCatcher::ActiveMQ::Stomp;
 
-use warnings;
-use strict;
+use Moose;
+use Net::Stomp;
+use Data::Dump qw/pp/;
+use Data::Serializer;
+use MooseX::Types -declare => [qw/Serializer/];
+use MooseX::Types::Moose qw/Str HashRef/;
+use Moose::Util::TypeConstraints;
 
 =head1 NAME
 
@@ -13,7 +18,54 @@ Version 0.01
 
 =cut
 
-our $VERSION = '0.01';
+use version; our $VERSION = qv(0.1.0)->numify;
+
+
+class_type 'Data::Serializer';
+subtype Serializer, as 'Data::Serializer';
+coerce Serializer, from 'Str',
+    via { Data::Serializer->new( serializer => $_ ) };
+
+has serializer => (
+    is          => 'ro',
+    isa         => Serializer,
+    required    => 1,
+    default     => 'JSON',
+    coerce      => 1,
+);
+
+has destination => (
+    is          => 'rw',
+    isa         => 'Str',
+);
+
+has hostname => (
+    is          => 'ro',
+    isa         => 'Str',
+    required    => 1,
+);
+
+has port => (
+    is          => 'ro',
+    isa         => 'Str',
+    required    => 1,
+);
+
+has connection => (
+    is          => 'ro',
+    isa         => 'Net::Stomp',
+    lazy        => 1,
+    builder     => '_build_connection',
+);
+
+sub _build_connection {
+    my ($self) = @_;
+
+    return Net::Stomp->new({
+        hostname    => $self->hostname,
+        port        => $self->port,
+    });
+}
 
 
 =head1 SYNOPSIS
@@ -34,11 +86,26 @@ if you don't export anything, such as for a purely object-oriented module.
 
 =head1 FUNCTIONS
 
-=head2 function1
+=head2 emit
 
 =cut
 
-sub function1 {
+sub emit {
+    my($self,$c,$content) = @_;
+
+    my $send_data = {
+        destination     => $self->destination,
+        body            => $self->serializer->raw_serializer($content),
+    };
+    $self->connection->connect();
+
+    $self->debug("Sending ". pp($send_data));
+
+    $self->connection->send( $send_data );
+
+    $self->connection->disconnect();
+
+    return;
 }
 
 =head2 function2
