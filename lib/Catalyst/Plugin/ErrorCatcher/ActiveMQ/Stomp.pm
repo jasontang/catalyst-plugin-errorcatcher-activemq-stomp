@@ -48,7 +48,7 @@ has hostname => (
 has port => (
     is          => 'ro',
     isa         => 'Str',
-    required    => 1,
+    default     => '61613',
 );
 
 has connection => (
