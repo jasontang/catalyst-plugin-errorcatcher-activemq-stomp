@@ -10,6 +10,7 @@ BEGIN {
 
 use Test::More 0.92;
 use Sys::Hostname;
+use Test::ActiveMQ;
 
 BEGIN {
     $ENV{ TESTAPP_CONFIG } = "$FindBin::Bin/lib/testapp.conf";
@@ -28,6 +29,17 @@ use Catalyst::Test 'TestApp';
     ok( my ($res,$c) = ctx_request('http://localhost/foo/crash_obj'), 'crash it' );
 
 
+my $amq = Test::ActiveMQ->new({
+    dump_dir => 't/tmp',
+});
+
+$amq->message_matches({
+    queue => 'test-message',
+    selector => { body => { }},
+    compare_with => {
+        wang => '2p',
+    },
+});
 
 
 #    # check the config
