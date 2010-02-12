@@ -7,7 +7,7 @@ author   'Jason Tang <tang.jason.ch@gmail.com>';
 build_requires 'Test::More';
 
 requires(
-    'Catalyst::Plugin::ErrorCatcher'    => '0.0.6.5',
+    'Catalyst::Plugin::ErrorCatcher'    => '0.0.6.6',
 );
 auto_install;
 

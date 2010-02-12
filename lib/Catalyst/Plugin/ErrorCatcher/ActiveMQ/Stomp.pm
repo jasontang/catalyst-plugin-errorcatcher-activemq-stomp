@@ -7,14 +7,12 @@ use Data::Serializer;
 use MooseX::Types -declare => [qw/Serializer/];
 use MooseX::Types::Moose qw/Str HashRef/;
 use Moose::Util::TypeConstraints;
+use Path::Class::File;
+use Fcntl qw(:flock);
 
 =head1 NAME
 
 Catalyst::Plugin::ErrorCatcher::ActiveMQ::Stomp - The great new Catalyst::Plugin::ErrorCatcher::ActiveMQ::Stomp!
-
-=head1 VERSION
-
-Version 0.01
 
 =cut
 
@@ -58,6 +56,16 @@ has connection => (
     builder     => '_build_connection',
 );
 
+has dump_dir => (
+    is          => 'ro',
+    isa         => 'Str',
+    predicate   => 'is_under_test',
+);
+
+has debug => (
+    is          => 'ro',
+    default     => 0,
+);
 sub _build_connection {
     my ($self) = @_;
 
@@ -66,6 +74,25 @@ sub _build_connection {
         port        => $self->port,
     });
 }
+
+around BUILDARGS => sub {
+    my ($orig, $self, @args) = @_;
+
+    my $hash = $self->$orig(@args);
+
+    # $c is passed so pull it out and get the config
+    my $c = undef;
+    if ($hash->{c}) {
+        $c = $hash->{c};
+    }
+
+    my $config = $c->_errorcatcher_c_cfg->{"Plugin::ErrorCatcher::ActiveMQ::Stomp"};
+
+    # if its not set properly then trash it
+    delete $config->{dump_dir} unless $config->{dump_dir};
+
+    return $config;
+};
 
 
 =head1 SYNOPSIS
@@ -93,27 +120,80 @@ if you don't export anything, such as for a purely object-oriented module.
 sub emit {
     my($self,$c,$content) = @_;
 
+    if (not $self->serializer->can('raw_serialize')) {
+        die __PACKAGE__ .": missing method 'raw_serialize' for "
+            . ref($self->serializer);
+    }
+
     my $send_data = {
         destination     => $self->destination,
-        body            => $self->serializer->raw_serializer($content),
+        body            => $self->serializer->raw_serialize({ output => $content }),
     };
-    $self->connection->connect();
 
-    $self->debug("Sending ". pp($send_data));
+    if ($self->is_under_test) {
+        my $fname = $self->_next_test_filename($self->dump_dir, $self->destination);
 
-    $self->connection->send( $send_data );
+        $self->_dump_to_file( $fname, $send_data );
 
-    $self->connection->disconnect();
+        if ($self->debug) {
+            $c->log->info(__PACKAGE__ .": in test mode");
+        }
+
+    } else {
+        if ($self->debug) {
+            $c->log->info(__PACKAGE__ .": in live mode");
+        }
+        $self->connection->connect();
+
+        $self->connection->send( $send_data );
+
+        $self->connection->disconnect();
+    }
 
     return;
 }
 
-=head2 function2
+sub _next_test_filename {
+    my($self,$dir, $queue) = @_;
 
-=cut
+    # Get a lock on "$dir/.lock" to avoid prove -j issues
+    my $lock;
+    open($lock, ">", "$dir/.lock") or die "Unable to open lock file $dir/.lock";
+    flock($lock, LOCK_EX) or die "Cannot lock ActiveMQ dump dir";
 
-sub function2 {
+    $queue =~ s{^/}{};
+    $queue =~ s{/}{_}g;
+    my $i = 0;
+    my $file;
+    do {
+        $i++;
+        $file = sprintf("%s/%04d__%s", $dir, $i, $queue);
+    } while (-f $file);
+
+    Path::Class::File->new($file)->touch;
+
+    flock($lock, LOCK_UN) or die "Cannot unlock ActiveMQ dump dir";
+    close($lock);
+
+    return $file;
 }
+
+sub _dump_to_file {
+    my($self,$filename, $send_data) = @_;
+
+    open(FILE, ">$filename") or die "Cannot write to file $filename: $!";
+
+    print FILE $self->serializer->raw_serialize($send_data);
+
+    close FILE;
+
+    return;
+}
+
+
+=head1 SEE ALSO
+
+L<Catalyst::Plugin::ErrorCatcher>
 
 =head1 AUTHOR
 
