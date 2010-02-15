@@ -3,7 +3,7 @@ package Test::ActiveMQ;
 use Moose;
 use Data::Serializer;
 use MooseX::Types::Moose qw/Str/;
-use MooseX::Types -declare => [qw/Dir/];
+use MooseX::Types -declare => [qw/Dir Serializer/];
 use Moose::Util::TypeConstraints;
 
 
@@ -22,13 +22,27 @@ subtype Dir, as 'Path::Class::Dir';
 coerce Dir, from 'Str',
     via { dir($_) };
 
-
 has dump_dir => (
     is          => 'ro',
     isa         => Dir,
     required    => 1,
     default     => undef,
     coerce      => 1,
+);
+
+
+class_type 'Data::Serializer';
+subtype Serializer, as 'Data::Serializer';
+coerce Serializer, from 'Str',
+    via { Data::Serializer->new( serializer => $_ ) };
+
+has serializer => (
+    is          => 'ro',
+    isa         => Serializer,
+    required    => 1,
+    default     => 'JSON',
+    coerce      => 1,
+
 );
 
 
@@ -105,10 +119,10 @@ sub _messages {
 
     $queue =~ s{^/}{};
     $queue =~ s{/}{_}g;
-
      my $dir = $self->dump_dir;
+
      my @kids = sort { $b->basename cmp $a->basename }
-               grep { $_->basename =~ /\Q$queue\E/ }
+#               grep { $_->basename =~ /\Q$queue\E/ }
                grep { !$_->is_dir } $dir->children;
 
     return @kids;
@@ -148,6 +162,10 @@ sub overlay_hash {
             # foo => \'Missing' says we *want* this value to not be present in
             # $data
             return 0 if exists $data->{$k};
+        } elsif ($reftype eq 'CODE') {
+            # foo => sub { return 1 if ($_[0]); return 0 }  says we have code to decide
+            # if its good or bad
+            return &{$overlay_item}($data->{$k});
         } else {
             return 0 if !exists $data->{$k};
         }

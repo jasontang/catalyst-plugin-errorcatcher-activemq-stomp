@@ -35,9 +35,14 @@ my $amq = Test::ActiveMQ->new({
 
 $amq->message_matches({
     queue => 'test-message',
-    selector => { body => { }},
+    #selector => { destination => { }},
     compare_with => {
-        wang => '2p',
+        output => sub {
+            my($input) = @_;
+
+            return 1 if ($input =~ /^Exception caught/);
+            return 0;
+        },
     },
 });
 
