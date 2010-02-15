@@ -97,14 +97,17 @@ around BUILDARGS => sub {
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+Put this sort of thing into the catalyst conf file..
 
-Perhaps a little code snippet.
+<Plugin::ErrorCatcher::ActiveMQ::Stomp>
+    destination     test-message
+    hostname        localhost
+    # defaults to 61613
+    #port
 
-    use Catalyst::Plugin::ErrorCatcher::ActiveMQ::Stomp;
+</Plugin::ErrorCatcher::ActiveMQ::Stomp>
 
-    my $foo = Catalyst::Plugin::ErrorCatcher::ActiveMQ::Stomp->new();
-    ...
+
 
 =head1 EXPORT
 
