@@ -2,3 +2,4 @@
 *.swp
 Makefile.old
 *.tar.gz
+Catalyst-Plugin-ErrorCatcher-ActiveMQ-Stomp-*
