@@ -160,6 +160,7 @@ sub _next_test_filename {
 
     # Get a lock on "$dir/.lock" to avoid prove -j issues
     my $lock;
+    mkdir $dir;
     open($lock, ">", "$dir/.lock") or die "Unable to open lock file $dir/.lock";
     flock($lock, LOCK_EX) or die "Cannot lock ActiveMQ dump dir";
 
