@@ -27,9 +27,3 @@ t/lib/TestApp/Controller/Foo.pm
 t/lib/TestApp/Exception.pm
 t/pod-coverage.t
 t/pod.t
-t/tmp/.lock
-t/tmp/0001__test-message
-t/tmp/0002__test-message
-t/tmp/0003__test-message
-t/tmp/0004__test-message
-t/tmp/0005__test-message
