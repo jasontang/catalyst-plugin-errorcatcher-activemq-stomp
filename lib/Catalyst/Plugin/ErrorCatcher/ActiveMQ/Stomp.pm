@@ -12,7 +12,7 @@ use Fcntl qw(:flock);
 
 =head1 NAME
 
-Catalyst::Plugin::ErrorCatcher::ActiveMQ::Stomp - The great new Catalyst::Plugin::ErrorCatcher::ActiveMQ::Stomp!
+Catalyst::Plugin::ErrorCatcher::ActiveMQ::Stomp - Plugin for ErrorCatcher to throw exceptions over ActiveMQ using Stomp
 
 =cut
 
